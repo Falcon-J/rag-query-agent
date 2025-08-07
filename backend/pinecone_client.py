@@ -5,7 +5,7 @@ PERSON 2 TASK: Pinecone Vector Search + Filtering
 - Result filtering and ranking
 """
 
-import pinecone
+from pinecone import Pinecone, ServerlessSpec
 from typing import List, Dict, Optional
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -19,11 +19,8 @@ from config import (
 
 class PineconeClient:
     def __init__(self):
-        # Initialize Pinecone
-        pinecone.init(
-            api_key=PINECONE_API_KEY,
-            environment=PINECONE_ENV
-        )
+        # Initialize Pinecone with new API
+        self.pc = Pinecone(api_key=PINECONE_API_KEY)
         
         self.index_name = PINECONE_INDEX
         self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
@@ -32,15 +29,19 @@ class PineconeClient:
         self._create_index_if_not_exists()
         
         # Get index reference
-        self.index = pinecone.Index(self.index_name)
+        self.index = self.pc.Index(self.index_name)
     
     def _create_index_if_not_exists(self):
         """Create Pinecone index if it doesn't exist"""
-        if self.index_name not in pinecone.list_indexes():
-            pinecone.create_index(
+        if self.index_name not in self.pc.list_indexes().names():
+            self.pc.create_index(
                 name=self.index_name,
                 dimension=384,  # all-MiniLM-L6-v2 embedding dimension
-                metric="cosine"
+                metric="cosine",
+                spec=ServerlessSpec(
+                    cloud='aws',
+                    region='us-east-1'
+                )
             )
             print(f"Created Pinecone index: {self.index_name}")
         else:
